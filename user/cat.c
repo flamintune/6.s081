@@ -10,7 +10,7 @@ cat(int fd)
   int n;
 
   while((n = read(fd, buf, sizeof(buf))) > 0) {
-    if (write(1, buf, n) != n) {
+    if (write(1, buf, n) != n) { // 向标准文件写入 n ？
       fprintf(2, "cat: write error\n");
       exit(1);
     }

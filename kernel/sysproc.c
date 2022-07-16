@@ -53,12 +53,12 @@ sys_sbrk(void)
 }
 
 uint64
-sys_sleep(void)
+sys_sleep(void) 
 {
   int n;
-  uint ticks0;
+  uint ticks0; // 宏定义 详细参见 type.h
 
-  if(argint(0, &n) < 0)
+  if(argint(0, &n) < 0) // pass the argument from user to kernel xv6内置的
     return -1;
   acquire(&tickslock);
   ticks0 = ticks;
