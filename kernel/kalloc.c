@@ -16,10 +16,10 @@ extern char end[]; // first address after kernel.
 
 struct run {
   struct run *next;
-};
+}; // 分配器中的数据结构 每个结构体都保存在空闲页中，一个页的大小为4096字节，
 
 struct {
-  struct spinlock lock;
+  struct spinlock lock; // 保护空闲链表
   struct run *freelist;
 } kmem;
 
@@ -27,7 +27,7 @@ void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
-  freerange(end, (void*)PHYSTOP);
+  freerange(end, (void*)PHYSTOP); // 将内存 加入读到空闲链表中 
 }
 
 void
@@ -36,7 +36,7 @@ freerange(void *pa_start, void *pa_end)
   char *p;
   p = (char*)PGROUNDUP((uint64)pa_start);
   for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE)
-    kfree(p);
+    kfree(p); // 通过对每一页调用kfree
 }
 
 // Free the page of physical memory pointed at by v,
@@ -52,7 +52,7 @@ kfree(void *pa)
     panic("kfree");
 
   // Fill with junk to catch dangling refs.
-  memset(pa, 1, PGSIZE);
+  memset(pa, 1, PGSIZE); // 将被释放的内存每个字节设为1
 
   r = (struct run*)pa;
 
@@ -79,4 +79,17 @@ kalloc(void)
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
+}
+
+uint64
+freemem(void)
+{
+  struct run *head = kmem.freelist;
+  int count = 0;
+  while (head)
+  {
+    head = head->next;
+    count++;
+  }
+  return count * PGSIZE;
 }
