@@ -13,16 +13,16 @@ int main(int argc,char *argv[])
     }
     if (fork() == 0 )
     {
-        close(fd[1]);
+        close(fd[0]);
         write(fd[1],"1",4);
-        // lockf(1,1,0);
+        close(fd[1]);
         printf("%d: received ping\n",getpid());
-        // lockf(1,0,0);
     }
     else
     { 
         close(fd[0]);
         read(fd[0],buf,4);
+        close(fd[1]);
         wait(0);
         printf("%d: received pong\n",getpid());
     }

@@ -89,7 +89,7 @@ runcmd(struct cmd *cmd)
     runcmd(rcmd->cmd);
     break;
 
-  case LIST:
+  case LIST: // ; 分号
     lcmd = (struct listcmd*)cmd;
     if(fork1() == 0)
       runcmd(lcmd->left);
@@ -165,7 +165,7 @@ main(void)
       continue;
     }
     if(fork1() == 0)
-      runcmd(parsecmd(buf));
+      runcmd(parsecmd(buf)); // 这样就不用 free 勒
     wait(0);
   }
   exit(0);
@@ -191,7 +191,7 @@ fork1(void)
 
 //PAGEBREAK!
 // Constructors
-
+// -------------- Parser ----------------
 struct cmd*
 execcmd(void)
 {
