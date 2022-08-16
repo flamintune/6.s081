@@ -88,7 +88,7 @@ extern uint64 sys_close(void);
 extern uint64 sys_dup(void);
 extern uint64 sys_exec(void);
 extern uint64 sys_exit(void);
-extern uint64 sys_fork(void);
+extern uint64 sys_fork(void);         
 extern uint64 sys_fstat(void);
 extern uint64 sys_getpid(void);
 extern uint64 sys_kill(void);

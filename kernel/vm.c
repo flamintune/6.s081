@@ -61,7 +61,7 @@ kvminit(void)
 void
 kvminithart()
 {
-  w_satp(MAKE_SATP(kernel_pagetable));
+  w_satp(MAKE_SATP(kernel_pagetable)); // pointer!!!!
   sfence_vma();
 }
 
@@ -149,7 +149,7 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
     if((pte = walk(pagetable, a, 1)) == 0)
       return -1;
     if(*pte & PTE_V)
-      panic("mappages: remap");
+      panic("mappages: remap"); 
     *pte = PA2PTE(pa) | perm | PTE_V;
     if(a == last)
       break;
@@ -274,7 +274,7 @@ freewalk(pagetable_t pagetable)
       uint64 child = PTE2PA(pte);
       freewalk((pagetable_t)child);
       pagetable[i] = 0;
-    } else if(pte & PTE_V){
+    } else if(pte & PTE_V){ // 就是 释放的时候 先会将映射搞没得，所以这里就是防止释放掉没释放掉的
       panic("freewalk: leaf");
     }
   }
@@ -431,4 +431,33 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   } else {
     return -1;
   }
+}
+// print the three-level pagetable
+void
+vmprint(pagetable_t pagetable,int index)
+{
+  // there are 2^9 = 512 PTEs in a page table.
+  if (!index)
+    printf("page table %p\n",pagetable);
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+    
+    if(pte & PTE_V){
+
+      for (int j = 0;j < index;++ j)
+        printf(".. ");
+      printf("..%d: pte %p pa %p\n",i,pte,PTE2PA(pte));
+    }
+    if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
+      // this PTE points to a lower-level page table.
+      uint64 child = PTE2PA(pte); // 大概率就是把后10位的falg去掉，然后填充0，通过移位操作完成
+      vmprint((pagetable_t)child,index+1);
+    }
+  }
+}
+// pgaccess（）
+int
+pgaccess(uint64 va,int number,uint* bitmask)
+{
+  return 0;
 }

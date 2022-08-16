@@ -52,7 +52,7 @@ procinit(void)
   initlock(&wait_lock, "wait_lock");
   for(p = proc; p < &proc[NPROC]; p++) {
       initlock(&p->lock, "proc");
-      p->kstack = KSTACK((int) (p - proc));
+      p->kstack = KSTACK((int) (p - proc)); // 为每个进程分配一个 kernelstack
   }
 }
 
@@ -119,14 +119,19 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
-
+  
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
     release(&p->lock);
     return 0;
   }
-
+  // Allcoate a usyscall page
+  if ((p->usyscallpage = (struct usyscall* )kalloc()) == 0){
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
   if(p->pagetable == 0){
@@ -141,6 +146,9 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
+  // init usyscall 
+  p->usyscallpage->pid = p->pid;
+
   return p;
 }
 
@@ -153,6 +161,9 @@ freeproc(struct proc *p)
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
+  if(p->usyscallpage)
+    kfree((void*)p->usyscallpage);
+    // if don't set zero 0
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
@@ -174,7 +185,7 @@ proc_pagetable(struct proc *p)
   pagetable_t pagetable;
 
   // An empty page table.
-  pagetable = uvmcreate();
+  pagetable = uvmcreate(); // 为其分欸一块空的页表
   if(pagetable == 0)
     return 0;
 
@@ -195,7 +206,14 @@ proc_pagetable(struct proc *p)
     uvmfree(pagetable, 0);
     return 0;
   }
-
+  // 这里分配的物理地址只要有就好了，位置什么的应该不是关键的地方！所以我们需要仿照 trapframe 也来初始化一页物理内存
+  if(mappages(pagetable,USYSCALL,PGSIZE,
+              (uint64)(p->usyscallpage),PTE_R | PTE_U) < 0){
+    uvmunmap(pagetable,TRAMPOLINE,1,0);
+    uvmunmap(pagetable,TRAPFRAME,1,0);
+    uvmfree(pagetable,0);
+    return 0;
+  }
   return pagetable;
 }
 
@@ -206,6 +224,7 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
 {
   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
   uvmunmap(pagetable, TRAPFRAME, 1, 0);
+  uvmunmap(pagetable,USYSCALL,1,0);
   uvmfree(pagetable, sz);
 }
 

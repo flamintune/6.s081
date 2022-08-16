@@ -80,7 +80,18 @@ sys_sleep(void)
 int
 sys_pgaccess(void)
 {
-  // lab pgtbl: your code here.
+  // lab pgtbl: your code here. 
+  // 
+  uint64 va;
+  int number;
+  uint bitmask;
+  if (argaddr(0,&va) < 0)
+    return -1;
+  if (argint(1,number) < 0)
+    return -1;
+  pgaccess(va,number,&bitmask);
+  // if (copyout(myproc()->pagetable))
+
   return 0;
 }
 #endif
