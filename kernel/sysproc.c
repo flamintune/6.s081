@@ -84,13 +84,19 @@ sys_pgaccess(void)
   // 
   uint64 va;
   int number;
+  uint64 addr;
   uint bitmask;
   if (argaddr(0,&va) < 0)
     return -1;
-  if (argint(1,number) < 0)
+  if (argint(1,&number) < 0)
     return -1;
+  if (argaddr(2,&addr) < 0)
+    return -1;
+  
   pgaccess(va,number,&bitmask);
-  // if (copyout(myproc()->pagetable))
+  
+  if (copyout(myproc()->pagetable,addr,&bitmask,sizeof(bitmask)) < 0)
+    return -1;
 
   return 0;
 }

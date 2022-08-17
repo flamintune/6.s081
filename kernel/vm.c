@@ -459,5 +459,15 @@ vmprint(pagetable_t pagetable,int index)
 int
 pgaccess(uint64 va,int number,uint* bitmask)
 {
+  // struct proc* p = myproc();
+  // pagetable_t table = p->pagetable;
+  // uint64 last;
+  // last = va + number * PGSIZE;
+  
+  // for(;;)
+  // {
+  //   pte_t *pte = walk(table,va,1)
+
+  // }
   return 0;
 }
