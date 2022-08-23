@@ -457,17 +457,34 @@ vmprint(pagetable_t pagetable,int index)
 }
 // pgaccess（）
 int
-pgaccess(uint64 va,int number,uint* bitmask)
+pgaccess(pagetable_t pagetable,uint64 va,int number,uint* bitmask)
 {
-  // struct proc* p = myproc();
-  // pagetable_t table = p->pagetable;
-  // uint64 last;
-  // last = va + number * PGSIZE;
-  
-  // for(;;)
-  // {
-  //   pte_t *pte = walk(table,va,1)
-
-  // }
+  uint64 last;
+  last = va + number * PGSIZE;
+  // vmprint(pagetable,0);
+  pte_t *pte;
+  for(int i = 0;;++ i)
+  {
+      // printf("%x\n",*bitmask);
+    pte = walk(pagetable,va,1);
+    
+    if ((*pte & PTE_V) == 0)
+      return -1;
+    if ((*pte & PTE_U) == 0)
+      return -1;
+    if (pte == 0)
+      return -1;
+    if ((*pte & PTE_A))
+    {
+      *bitmask = *bitmask | (1L << i);
+      *pte = *pte & (~PTE_A);
+    }
+    va += PGSIZE;
+    if (va == last)
+    {
+      // printf("%x\n",*bitmask);
+      return 0;
+    }
+  }
   return 0;
 }

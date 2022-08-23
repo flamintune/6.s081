@@ -85,17 +85,20 @@ sys_pgaccess(void)
   uint64 va;
   int number;
   uint64 addr;
-  uint bitmask;
+  uint bitmask = 0;
   if (argaddr(0,&va) < 0)
     return -1;
   if (argint(1,&number) < 0)
     return -1;
   if (argaddr(2,&addr) < 0)
     return -1;
+  if (number > 512) // 设置扫描页面数的上限
+    number = 512;
   
-  pgaccess(va,number,&bitmask);
+  if (pgaccess(myproc()->pagetable,va,number,&bitmask) < 0)
+    return -1;
   
-  if (copyout(myproc()->pagetable,addr,&bitmask,sizeof(bitmask)) < 0)
+  if (copyout(myproc()->pagetable,addr,(char *)&bitmask,sizeof(bitmask)) < 0)
     return -1;
 
   return 0;
