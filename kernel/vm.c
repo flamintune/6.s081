@@ -227,6 +227,7 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
     return oldsz;
 
   oldsz = PGROUNDUP(oldsz);
+  // 按块来分配，只有当要分配的大小超过一个块 4096 byte 时才会选择分配
   for(a = oldsz; a < newsz; a += PGSIZE){
     mem = kalloc();
     if(mem == 0){
