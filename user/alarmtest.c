@@ -52,7 +52,9 @@ test0()
     if(count > 0)
       break;
   }
-  sigalarm(0, 0);
+  printf("hello wrold\n");
+
+  sigalarm(0, 0); // stop alarm
   if(count > 0){
     printf("test0 passed\n");
   } else {

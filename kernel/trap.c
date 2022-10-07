@@ -46,7 +46,7 @@ usertrap(void)
   w_stvec((uint64)kernelvec);
 
   struct proc *p = myproc();
-  
+
   // save user program counter.
   p->trapframe->epc = r_sepc();
   
@@ -73,13 +73,30 @@ usertrap(void)
     p->killed = 1;
   }
 
+  // 退出过程
   if(p->killed)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2)
+  {
+    p->timer++;
+    if (p->tick == p->timer)
+    {
+      p->timer = 0;
+      if ((p->handler || p->tick) && p->returned)
+      {
+        p->alarmframe = (struct trapframe*)kalloc();
+        memmove(p->alarmframe,(char *)p->trapframe,sizeof(struct trapframe));
+        p->returned = 0;
+        p->trapframe->epc = p->handler;
+      }
+    }
     yield();
+  }
 
+
+  // return user space
   usertrapret();
 }
 
@@ -116,6 +133,7 @@ usertrapret(void)
   w_sstatus(x);
 
   // set S Exception Program Counter to the saved user pc.
+
   w_sepc(p->trapframe->epc);
 
   // tell trampoline.S the user page table to switch to.
