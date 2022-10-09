@@ -148,8 +148,12 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   for(;;){
     if((pte = walk(pagetable, a, 1)) == 0)
       return -1;
+    // printf("map pte:%x\n ",*pte);
     if(*pte & PTE_V)
+    {
+      printf("%x\n",*pte);
       panic("mappages: remap");
+    }
     *pte = PA2PTE(pa) | perm | PTE_V;
     if(a == last)
       break;
@@ -303,7 +307,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   pte_t *pte;
   uint64 pa, i;
   uint flags;
-  char *mem;
+  // char *mem;
 
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
@@ -311,14 +315,18 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if((*pte & PTE_V) == 0)
       panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
+    
+    *pte &= ~PTE_W; //set not read
+    *pte |= PTE_C; // set rsw bit for cow page
     flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
+    // if((mem = kalloc()) == 0) // need to mapping not allocation
+      // goto err;
+    // memmove(mem, (char*)pa, PGSIZE);
+    if(mappages(new, i, PGSIZE, pa, flags) != 0){
+      // kfree(mem);
       goto err;
     }
+
   }
   return 0;
 
@@ -431,4 +439,35 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   } else {
     return -1;
   }
+}
+
+// page falut handler
+int
+pagefaulthandler(pagetable_t pagetable,uint64 va)
+{
+  pte_t* pte = walk(pagetable,va,0);
+  printf("pte:%x\n",*pte);
+  printf("va:%x\n",PGROUNDDOWN(va));
+  uint flags;
+  if ((*pte & PTE_C) == 0)
+    return 0;
+  char *mem;
+  if ((mem = kalloc()) == 0)
+    {
+      return 1;
+    }
+  memmove(mem,(char *)walkaddr(pagetable,va),PGSIZE);
+  flags = PTE_FLAGS(*pte) & ~PTE_C;
+  printf("walk:%x\n",*walk(pagetable,va,0));
+  
+  uvmunmap(pagetable,PGROUNDDOWN(va),1,0);
+  printf("walk:%x\n",*walk(pagetable,va,0));
+  // 1011
+  if (mappages(pagetable,va,PGSIZE,(uint64)mem,flags | PTE_W) != 0)
+  {
+    kfree(mem);
+    return 1;
+  }
+  
+  return 0;
 }
