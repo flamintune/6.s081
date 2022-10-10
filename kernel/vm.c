@@ -15,6 +15,30 @@ extern char etext[];  // kernel.ld sets this to end of kernel code.
 
 extern char trampoline[]; // trampoline.S
 
+
+void
+vmprint(pagetable_t pagetable,int index)
+{
+  // there are 2^9 = 512 PTEs in a page table.
+  if (!index)
+    printf("page table %p\n",pagetable);
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+    
+    if(pte & PTE_V){
+
+      for (int j = 0;j < index;++ j)
+        printf(".. ");
+      printf("..%d: pte %p pa %p\n",i,pte,PTE2PA(pte));
+    }
+    if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
+      // this PTE points to a lower-level page table.
+      uint64 child = PTE2PA(pte); // 大概率就是把后10位的falg去掉，然后填充0，通过移位操作完成
+      vmprint((pagetable_t)child,index+1);
+    }
+  }
+}
+
 // Make a direct-map page table for the kernel.
 pagetable_t
 kvmmake(void)
@@ -82,7 +106,7 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
 {
   if(va >= MAXVA)
     panic("walk");
-
+  
   for(int level = 2; level > 0; level--) {
     pte_t *pte = &pagetable[PX(level, va)];
     if(*pte & PTE_V) {
@@ -175,7 +199,10 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
     if((pte = walk(pagetable, a, 0)) == 0)
       panic("uvmunmap: walk");
     if((*pte & PTE_V) == 0)
+    {
+      vmprint(pagetable,0);
       panic("uvmunmap: not mapped");
+    }
     if(PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
     if(do_free){
