@@ -2818,10 +2818,10 @@ main(int argc, char *argv[])
     void (*f)(char *);
     char *s;
   } tests[] = {
-    {MAXVAplus, "MAXVAplus"},
-    {manywrites, "manywrites"},
-    {execout, "execout"},
-    {copyin, "copyin"},
+    // {MAXVAplus, "MAXVAplus"},
+    // {manywrites, "manywrites"},
+    // {execout, "execout"},
+    // {copyin, "copyin"},
     {copyout, "copyout"},
     {copyinstr1, "copyinstr1"},
     {copyinstr2, "copyinstr2"},

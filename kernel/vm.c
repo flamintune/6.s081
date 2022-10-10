@@ -477,6 +477,8 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 int
 pagefaulthandler(pagetable_t pagetable,uint64 va)
 {
+  if (va >= MAXVA)
+    return 1;
   pte_t* pte = walk(pagetable,va,0);
   uint flags;
   if ((*pte & PTE_C) == 0)
@@ -484,7 +486,6 @@ pagefaulthandler(pagetable_t pagetable,uint64 va)
   char *mem;
   if ((mem = kalloc()) == 0)
     {
-      printf("hello?");
       return 1;
     }
   memmove(mem,(char *)walkaddr(pagetable,PGROUNDDOWN(va)),PGSIZE);

@@ -72,7 +72,6 @@ usertrap(void)
     if (pagefaulthandler(p->pagetable,r_stval()) == 1)
     {
       p->killed = 1;
-      panic("page fault no more memory to allocate\n");
     }
   }else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
