@@ -15,6 +15,31 @@ extern char etext[];  // kernel.ld sets this to end of kernel code.
 
 extern char trampoline[]; // trampoline.S
 
+
+void
+vmprint(pagetable_t pagetable,int index)
+{
+  // there are 2^9 = 512 PTEs in a page table.
+  if (!index)
+    printf("page table %p\n",pagetable);
+  for(int i = 0; i < 512; i++){
+    pte_t pte = pagetable[i];
+    
+    if(pte & PTE_V){
+
+      for (int j = 0;j < index;++ j)
+        printf(".. ");
+      printf("..%d: pte %p pa %p\n",i,pte,PTE2PA(pte));
+    }
+    if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
+      // this PTE points to a lower-level page table.
+      uint64 child = PTE2PA(pte); // 大概率就是把后10位的falg去掉，然后填充0，通过移位操作完成
+      vmprint((pagetable_t)child,index+1);
+    }
+  }
+}
+
+
 // Make a direct-map page table for the kernel.
 pagetable_t
 kvmmake(void)
@@ -148,13 +173,13 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   for(;;){
     if((pte = walk(pagetable, a, 1)) == 0)
       return -1;
-    // printf("map pte:%x\n ",*pte);
     if(*pte & PTE_V)
     {
       printf("%x\n",*pte);
       panic("mappages: remap");
     }
     *pte = PA2PTE(pa) | perm | PTE_V;
+    increfercount(pa);
     if(a == last)
       break;
     a += PGSIZE;
@@ -186,7 +211,9 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
       uint64 pa = PTE2PA(*pte);
       kfree((void*)pa);
     }
+    decrefercount(PTE2PA(*pte));
     *pte = 0;
+    // a 是虚拟地址！要传的应该是物理地址
   }
 }
 
@@ -310,6 +337,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   // char *mem;
 
   for(i = 0; i < sz; i += PGSIZE){
+    
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
     if((*pte & PTE_V) == 0)
@@ -326,7 +354,6 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       // kfree(mem);
       goto err;
     }
-
   }
   return 0;
 
@@ -355,10 +382,15 @@ int
 copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
   uint64 n, va0, pa0;
-
+  pte_t *pte;
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
     pa0 = walkaddr(pagetable, va0);
+    pte = walk(pagetable,va0,0);
+    if (*pte & PTE_C)
+      if (pagefaulthandler(pagetable,va0) == 0)
+        pa0 = walkaddr(pagetable,va0);
+      
     if(pa0 == 0)
       return -1;
     n = PGSIZE - (dstva - va0);
@@ -446,24 +478,22 @@ int
 pagefaulthandler(pagetable_t pagetable,uint64 va)
 {
   pte_t* pte = walk(pagetable,va,0);
-  printf("pte:%x\n",*pte);
-  printf("va:%x\n",PGROUNDDOWN(va));
   uint flags;
   if ((*pte & PTE_C) == 0)
     return 0;
   char *mem;
   if ((mem = kalloc()) == 0)
     {
+      printf("hello?");
       return 1;
     }
-  memmove(mem,(char *)walkaddr(pagetable,va),PGSIZE);
+  memmove(mem,(char *)walkaddr(pagetable,PGROUNDDOWN(va)),PGSIZE);
   flags = PTE_FLAGS(*pte) & ~PTE_C;
-  printf("walk:%x\n",*walk(pagetable,va,0));
-  
   uvmunmap(pagetable,PGROUNDDOWN(va),1,0);
-  printf("walk:%x\n",*walk(pagetable,va,0));
+
   // 1011
-  if (mappages(pagetable,va,PGSIZE,(uint64)mem,flags | PTE_W) != 0)
+  
+  if (mappages(pagetable,PGROUNDDOWN(va),PGSIZE,(uint64)mem,flags | PTE_W) != 0)
   {
     kfree(mem);
     return 1;
@@ -471,3 +501,4 @@ pagefaulthandler(pagetable_t pagetable,uint64 va)
   
   return 0;
 }
+
