@@ -14,6 +14,10 @@
 struct thread {
   char       stack[STACK_SIZE]; /* the thread's stack */
   int        state;             /* FREE, RUNNING, RUNNABLE */
+
+  // add content
+  // struct trapframe t;
+
 };
 struct thread all_thread[MAX_THREAD];
 struct thread *current_thread;
@@ -76,6 +80,7 @@ thread_create(void (*func)())
   }
   t->state = RUNNABLE;
   // YOUR CODE HERE
+  
 }
 
 void 

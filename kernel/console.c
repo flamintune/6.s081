@@ -163,7 +163,7 @@ consoleintr(int c)
       consputc(c);
 
       // store for consumption by consoleread().
-      cons.buf[cons.e++ % INPUT_BUF] = c;
+      cons.buf[cons.e++ % INPUT_BUF] = c; 
 
       if(c == '\n' || c == C('D') || cons.e == cons.r+INPUT_BUF){
         // wake up consoleread() if a whole line (or end-of-file)
