@@ -14,7 +14,7 @@ statistics(void *buf, int sz)
       exit(1);
   }
   for (i = 0; i < sz; ) {
-    if ((n = read(fd, buf+i, sz-i)) < 0) {
+    if ((n = read(fd, buf+i, sz-i)) < 0) { // read return read count
       break;
     }
     i += n;

@@ -26,11 +26,11 @@ int ntas(int print)
 {
   int n;
   char *c;
-
-  if (statistics(buf, SZ) <= 0) {
+  // statistics 
+  if (statistics(buf, SZ) <= 0) { // 从 statistics 读取 SZ 个 到 buf中
     fprintf(2, "ntas: no stats\n");
   }
-  c = strchr(buf, '=');
+  c = strchr(buf, '='); // 找到 = 开头的位置
   n = atoi(c+2);
   if(print)
     printf("%s", buf);

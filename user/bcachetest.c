@@ -95,15 +95,15 @@ test0()
 
   printf("start test0\n");
   for(int i = 0; i < NCHILD; i++){
-    dir[0] = '0' + i;
+    dir[0] = '0' + i; // 创建多个目录 0 ~ 2
     mkdir(dir);
-    if (chdir(dir) < 0) {
+    if (chdir(dir) < 0) { // 进到创建的这个目录去
       printf("chdir failed\n");
       exit(1);
     }
     unlink(file);
     createfile(file, N);
-    if (chdir("..") < 0) {
+    if (chdir("..") < 0) { // 返回到上一级目录
       printf("chdir failed\n");
       exit(1);
     }

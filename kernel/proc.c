@@ -357,7 +357,7 @@ exit(int status)
   iput(p->cwd);
   end_op();
   p->cwd = 0;
-
+ 
   acquire(&wait_lock);
 
   // Give any children to init.
@@ -369,7 +369,7 @@ exit(int status)
   acquire(&p->lock);
 
   p->xstate = status;
-  p->state = ZOMBIE;
+  p->state = ZOMBIE; // not ready to release all resource
 
   release(&wait_lock);
 
@@ -407,7 +407,7 @@ wait(uint64 addr)
             release(&wait_lock);
             return -1;
           }
-          freeproc(np);
+          freeproc(np); // here release remain resource by parent
           release(&np->lock);
           release(&wait_lock);
           return pid;
@@ -479,7 +479,7 @@ sched(void)
 
   if(!holding(&p->lock))
     panic("sched p->lock");
-  if(mycpu()->noff != 1)
+  if(mycpu()->noff != 1)  // it's here check addional lock
     panic("sched locks");
   if(p->state == RUNNING)
     panic("sched running");
