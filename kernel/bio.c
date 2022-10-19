@@ -84,7 +84,6 @@ bget(uint dev, uint blockno)
       b->refcnt++;
       release(&bcache.bucket[i]);
       acquiresleep(&b->lock);
-      printf("%d\n",b->blockno);
       return b;
     }
     last = b;
@@ -98,6 +97,19 @@ bget(uint dev, uint blockno)
   //   }
   // }
   
+  for (b = bcache.table[i].next;b != &bcache.table[i];b = b->next){ 
+    if (b->refcnt == 0){
+      b->dev = dev;
+      b->blockno = blockno;
+      b->valid = 0;
+      b->refcnt = 1;
+      release(&bcache.bucket[i]);
+      acquiresleep(&b->lock);
+      return b;
+    }
+  
+  }
+
   // Not cached.
   // Recycle the least recently used (LRU) unused buffer.
   
@@ -112,6 +124,10 @@ bget(uint dev, uint blockno)
   }
   if (b)
   {
+    if (b->blockno % NBUCKET != i)
+      acquire(&bcache.bucket[b->blockno % NBUCKET]);
+    release(&bcache.lock);
+    
     prev = &bcache.table[b->blockno % NBUCKET];
     while(prev->next != b)
       prev = prev->next;
@@ -122,14 +138,13 @@ bget(uint dev, uint blockno)
     b->blockno = blockno;
     b->valid = 0;
     b->refcnt = 1;
+    if (prev->blockno % NBUCKET != i)
+      release(&bcache.bucket[prev->blockno % NBUCKET]);
     release(&bcache.bucket[i]);
-    release(&bcache.lock);
     acquiresleep(&b->lock);
-    // printf("%p\n",b->blockno);
     return b;
   }
 
-  // release(bcache.bucket[NBUCKET]);
   // for(b = bcache.head.prev; b != &bcache.head; b = b->prev){
   //   if(b->refcnt == 0) {
       // b->dev = dev;
@@ -188,6 +203,7 @@ brelse(struct buf *b)
     release(&tickslock);
   }
   release(&bcache.bucket[i]);
+
   // release(&bcache.lock);
 }
 
