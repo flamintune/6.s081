@@ -480,7 +480,11 @@ sched(void)
   if(!holding(&p->lock))
     panic("sched p->lock");
   if(mycpu()->noff != 1)  // it's here check addional lock
+  {
+    printf("%p\n",p->context.ra);
+    printf("%p\n",p->trapframe->epc);
     panic("sched locks");
+  }
   if(p->state == RUNNING)
     panic("sched running");
   if(intr_get())

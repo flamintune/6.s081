@@ -7,7 +7,7 @@ struct buf {
   uint refcnt; // ref count
   uint timestamp; // time stamp
   // struct buf *prev; // LRU cache list
-  // struct buf *next;
+  struct buf *next;
   uchar data[BSIZE];
 };
 
