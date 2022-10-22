@@ -432,3 +432,17 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+int
+pagefaulthandler(pagetable_t pagettable,uint64 va)
+{
+  if (va >= MAXVA)
+    return -1;
+
+  if (pte_t *pte = walk(pagetable,va,0) == 0){
+    printf("can't find va in pgtbl\n");
+    return -1;
+  }
+
+  
+}
