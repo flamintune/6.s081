@@ -443,6 +443,17 @@ pagefaulthandler(pagetable_t pagettable,uint64 va)
     printf("can't find va in pgtbl\n");
     return -1;
   }
-
   
+  char *mem = kalloc();
+  if (mem == 0)
+    panic("no more memory!");
+  memset(mem,0,PGSIZE);
+  
+  *pte = 0;
+  if (mmapages(pagetable,PGROUNDDOWN(va),PGSIZE,(uint64)mem,PTE_R | PTE_W | PTE_U) == -1){
+    kfree(mem);
+    printf("fail to map\n");
+    return -1;
+  }
+  return 0;
 }
