@@ -174,8 +174,13 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
   for(a = va; a < va + npages*PGSIZE; a += PGSIZE){
     if((pte = walk(pagetable, a, 0)) == 0)
       panic("uvmunmap: walk");
+    printf("%p\n",*pte);
+
     if((*pte & PTE_V) == 0)
-      panic("uvmunmap: not mapped");
+    {
+      continue;
+    }  
+      // panic("uvmunmap: not mapped");
     if(PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
     if(do_free){
@@ -275,6 +280,8 @@ freewalk(pagetable_t pagetable)
       freewalk((pagetable_t)child);
       pagetable[i] = 0;
     } else if(pte & PTE_V){
+    printf("%p\n",pte);
+
       panic("freewalk: leaf");
     }
   }
@@ -434,23 +441,17 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 }
 
 int
-pagefaulthandler(pagetable_t pagettable,uint64 va)
+pagefaulthandler(pagetable_t pagetable,uint64 va)
 {
   if (va >= MAXVA)
     return -1;
-
-  if (pte_t *pte = walk(pagetable,va,0) == 0){
-    printf("can't find va in pgtbl\n");
-    return -1;
-  }
   
   char *mem = kalloc();
   if (mem == 0)
     panic("no more memory!");
   memset(mem,0,PGSIZE);
   
-  *pte = 0;
-  if (mmapages(pagetable,PGROUNDDOWN(va),PGSIZE,(uint64)mem,PTE_R | PTE_W | PTE_U) == -1){
+  if (mappages(pagetable,PGROUNDDOWN(va),PGSIZE,(uint64)mem,PTE_R | PTE_W | PTE_U) == -1){
     kfree(mem);
     printf("fail to map\n");
     return -1;
