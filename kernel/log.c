@@ -72,10 +72,10 @@ install_trans(int recovering)
 
   for (tail = 0; tail < log.lh.n; tail++) {
     struct buf *lbuf = bread(log.dev, log.start+tail+1); // read log block
-    struct buf *dbuf = bread(log.dev, log.lh.block[tail]); // read dst
-    memmove(dbuf->data, lbuf->data, BSIZE);  // copy block to dst
+    struct buf *dbuf = bread(log.dev, log.lh.block[tail]); // read dst 为什么要去读这个，明明是直接写的
+    memmove(dbuf->data, lbuf->data, BSIZE);  // copy block to dst 这里可以被优化
     bwrite(dbuf);  // write dst to disk
-    if(recovering == 0)
+    if(recovering == 0) // 
       bunpin(dbuf);
     brelse(lbuf);
     brelse(dbuf);
@@ -109,7 +109,9 @@ write_head(void)
   for (i = 0; i < log.lh.n; i++) {
     hb->block[i] = log.lh.block[i];
   }
-  bwrite(buf);
+  // carsh here what wiil happpen
+  bwrite(buf); // commit point
+  // carsh here what will happen 
   brelse(buf);
 }
 
@@ -118,6 +120,7 @@ recover_from_log(void)
 {
   read_head();
   install_trans(1); // if committed, copy from log to disk
+  // if crash here, the machine will conitinue to reboot and recover. That'why need differ the recover and install by one and zero
   log.lh.n = 0;
   write_head(); // clear the log
 }
@@ -195,7 +198,7 @@ commit()
 {
   if (log.lh.n > 0) {
     write_log();     // Write modified blocks from cache to log
-    write_head();    // Write header to disk -- the real commit
+    write_head();    //? Write header to disk -- the real commit  point!!
     install_trans(0); // Now install writes to home locations
     log.lh.n = 0;
     write_head();    // Erase the transaction from the log

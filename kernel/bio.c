@@ -85,7 +85,8 @@ bget(uint dev, uint blockno)
       return b;
     }
   }
-  panic("bget: no buffers");
+  panic("bget: no buffers"); // here must be panic,if just return error,因为 文件是多步，可能存在部分文件写入，部分文件没写
+  // so best thing is to 撤销 withdraw those update
 }
 
 // Return a locked buf with the contents of the indicated block.
@@ -137,7 +138,7 @@ brelse(struct buf *b)
 }
 
 void
-bpin(struct buf *b) {
+bpin(struct buf *b) { // pin 固定，
   acquire(&bcache.lock);
   b->refcnt++;
   release(&bcache.lock);

@@ -5,7 +5,6 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
-
 /*
  * the kernel's page table.
  */
@@ -111,7 +110,7 @@ walkaddr(pagetable_t pagetable, uint64 va)
 
   pte = walk(pagetable, va, 0);
   if(pte == 0)
-    return 0;
+    return -1; // maybeproblem
   if((*pte & PTE_V) == 0)
     return 0;
   if((*pte & PTE_U) == 0)
@@ -148,9 +147,13 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   for(;;){
     if((pte = walk(pagetable, a, 1)) == 0)
       return -1;
+    // if (size == PGSIZE && perm == 2)
+      // printf("a: %p pte:%p pa:%p *pte:%p\n",a,pte,pa,*pte);
     if(*pte & PTE_V)
       panic("mappages: remap");
     *pte = PA2PTE(pa) | perm | PTE_V;
+    // if (size == PGSIZE && perm == 2)
+      // printf("new pte:%p pa:%p *pte:%p\n",pte,pa,*pte);
     if(a == last)
       break;
     a += PGSIZE;
@@ -174,7 +177,7 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
   for(a = va; a < va + npages*PGSIZE; a += PGSIZE){
     if((pte = walk(pagetable, a, 0)) == 0)
       panic("uvmunmap: walk");
-    printf("%p\n",*pte);
+    // printf("%p\n",*pte);
 
     if((*pte & PTE_V) == 0)
     {
@@ -316,7 +319,8 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
     if((*pte & PTE_V) == 0)
-      panic("uvmcopy: page not present");
+      continue;
+      // panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
     if((mem = kalloc()) == 0)
@@ -438,23 +442,4 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   } else {
     return -1;
   }
-}
-
-int
-pagefaulthandler(pagetable_t pagetable,uint64 va)
-{
-  if (va >= MAXVA)
-    return -1;
-  
-  char *mem = kalloc();
-  if (mem == 0)
-    panic("no more memory!");
-  memset(mem,0,PGSIZE);
-  
-  if (mappages(pagetable,PGROUNDDOWN(va),PGSIZE,(uint64)mem,PTE_R | PTE_W | PTE_U) == -1){
-    kfree(mem);
-    printf("fail to map\n");
-    return -1;
-  }
-  return 0;
 }

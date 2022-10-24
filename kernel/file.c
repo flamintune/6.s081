@@ -12,6 +12,7 @@
 #include "file.h"
 #include "stat.h"
 #include "proc.h"
+#include "fcntl.h"
 
 struct devsw devsw[NDEV];
 struct {
@@ -157,7 +158,7 @@ filewrite(struct file *f, uint64 addr, int n)
     while(i < n){
       int n1 = n - i;
       if(n1 > max)
-        n1 = max;
+        n1 = max;  // look at above explaination write并没有要求原子，只是不要损坏文件系统就好辣
 
       begin_op();
       ilock(f->ip);
@@ -180,3 +181,76 @@ filewrite(struct file *f, uint64 addr, int n)
   return ret;
 }
 
+int
+filereadoff(struct file*f,uint64 pa,uint off,int n){
+  int r;
+  ilock(f->ip);
+  if ((r = readi(f->ip,0,pa,off,n)) < 0){
+    printf("%d %d\n",r,off);
+    panic("pagefualt readi");
+  }
+  iunlock(f->ip);
+  return 0;
+}
+
+int
+filedecre(struct file *f){
+  acquire(&ftable.lock);
+  if(f->ref < 1)
+    panic("filedecre");
+  f->ref--;
+  release(&ftable.lock);
+  return 1;
+}
+
+int
+checkreadwrite(int flags,int prot,struct file *f){
+  if (prot & PROT_WRITE)
+    if (f->writable == 0 && flags & MAP_SHARED)
+      return -1;
+  
+  return 0;
+}
+
+int
+filewriteback(struct file *f, uint64 addr, int n)
+{
+  int r, ret = 0;
+
+  if(f->writable == 0)
+    return -1;
+    // write a few blocks at a time to avoid exceeding
+    // the maximum log transaction size, including
+    // i-node, indirect block, allocation blocks,
+    // and 2 blocks of slop for non-aligned writes.
+    // this really belongs lower down, since writei()
+    // might be writing a device like the console.
+  if(f->type == FD_INODE){
+    int max = ((MAXOPBLOCKS-1-1-2) / 2) * BSIZE;
+    int i = 0;
+    while(i < n){
+      int n1 = n - i;
+      if(n1 > max)
+        n1 = max;  // look at above explaination write并没有要求原子，只是不要损坏文件系统就好辣
+
+      begin_op();
+      ilock(f->ip);
+      if ((r = writei(f->ip, 1, addr + i, f->off, n1)) > 0)
+        f->off += r;
+      iunlock(f->ip);
+      end_op();
+
+      if(r != n1){
+        // error from writei
+        break;
+      }
+      i += r;
+    }
+    ret = (i == n ? n : -1);
+  }else {
+    printf("type:%d\n",f->type);
+    panic("filewriteback");
+  }
+
+  return ret;
+}

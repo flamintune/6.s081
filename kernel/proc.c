@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "fcntl.h"
 
 struct cpu cpus[NCPU];
 
@@ -281,6 +282,14 @@ fork(void)
     return -1;
   }
 
+  // copy vma
+  for (int i = 0;i < NVMA;++ i){
+    memmove((char *)(np->vma+i),(char *)(p->vma+i),sizeof(struct vma));
+    // check copy success yes
+    // printf("child addr:%p paddr:%p\n",np->vma[i].length,p->vma[i].length);
+    if(np->vma[i].addr != 0)
+      filedup(np->vma[i].f);
+  }
   // Copy user memory from parent to child.
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
     freeproc(np);
@@ -350,6 +359,25 @@ exit(int status)
       struct file *f = p->ofile[fd];
       fileclose(f);
       p->ofile[fd] = 0;
+    }
+  }
+
+  // unmap all mapped page
+  for(int i = 0;i < NVMA;++ i){
+    if (p->vma[i].addr != 0){
+      filedecre(myproc()->vma[i].f);
+      int length = p->vma[i].length;
+      int addr = p->vma[i].addr;
+      int npages = length / PGSIZE;
+      if (length % PGSIZE)
+        npages += 1;
+      // write back
+      if ((p->vma[i].flags & MAP_SHARED) && (p->vma[i].prot & PROT_WRITE))
+        if (filewriteback(p->vma[i].f,addr,length) < 0){
+          // printf("p->vma[i].flags:%d p->vma[i].prot:%d\n",p->vma[i].flags,p->vma[i].prot);
+          // panic("writeback error");
+        }
+      uvmunmap(myproc()->pagetable,addr,npages,1);
     }
   }
 

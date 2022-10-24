@@ -295,7 +295,7 @@ sys_open(void)
   if((n = argstr(0, path, MAXPATH)) < 0 || argint(1, &omode) < 0)
     return -1;
 
-  begin_op();
+  begin_op(); // transaction start
 
   if(omode & O_CREATE){
     ip = create(path, T_FILE, 0, 0);
@@ -305,7 +305,7 @@ sys_open(void)
     }
   } else {
     if((ip = namei(path)) == 0){
-      end_op();
+      end_op(); // transcation end
       return -1;
     }
     ilock(ip);
@@ -488,11 +488,69 @@ sys_pipe(void)
 uint64
 sys_mmap(void)
 {
-  return 0;
+  struct file* f;
+  uint64 addr,length;
+  int prot,flags,off,fd;
+  if (argaddr(0,&addr) < 0  || argaddr(1,&length) < 0 || argint(2,&prot) < 0 || argint(3,&flags) || argint(5,&off) < 0)
+    return -1;
+  
+  if (argfd(4,&fd,&f) < 0) // get fd and file
+    return -1;
+    
+  if (checkreadwrite(flags,prot,f) < 0)
+    return -1;
+  if (addr == 0)
+  {
+    addr = myproc()->sz;
+    myproc()->sz += length;
+  }
+
+  filedup(f);
+  // int index = myproc()->index++;
+  for (int i = 0;i < NVMA;++ i)
+    if (myproc()->vma[i].addr == 0){
+      myproc()->vma[i].addr = addr;  // 这里需要让 kernel 给他找一个没用的 区域
+      myproc()->vma[i].length = length;
+      myproc()->vma[i].prot = prot;
+      myproc()->vma[i].flags = flags;
+      myproc()->vma[i].off = (uint)off;
+      myproc()->vma[i].f = f;
+      break;
+    }
+
+  return addr;
 }
 
 uint64
 sys_munmap(void)
 {
+  uint64 addr,length;
+  int i;
+  if (argaddr(0,&addr) < 0 || argaddr(1,&length))
+    return -1;
+  if (addr % PGSIZE)
+    return -1;
+  for (i = 0;i < NVMA;++ i)
+  {
+    if (myproc()->vma[i].addr == addr){
+      if (myproc()->vma[i].addr == length){
+        filedecre(myproc()->vma[i].f);
+        myproc()->vma[i].addr = 0;
+      }
+      // else{
+      //   // myproc()->vma[i].addr = addr + length;  
+      // }
+      break;
+    }
+  }
+  int npages = length / PGSIZE;
+  // write back
+  if (myproc()->vma[i].flags & MAP_SHARED && myproc()->vma[i].prot & PROT_WRITE)
+    if (filewriteback(myproc()->vma[i].f,addr,length) < 0)
+      return -1;
+  uvmunmap(myproc()->pagetable,addr,npages,1);
+  // printf("%x\n",myproc()->sz);
+  // printf("%d %d\n",sizeof(void *),sizeof(int *));
+
   return 0;
 }

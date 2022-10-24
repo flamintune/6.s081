@@ -29,6 +29,52 @@ trapinithart(void)
   w_stvec((uint64)kernelvec);
 }
 
+// pgfault handler
+int
+pagefaulthandler(uint64 va)
+{
+  struct vma* vma = myproc()->vma;
+  pagetable_t pagetable = myproc()->pagetable;
+  int i,flags = 0,off = 0;
+
+  if (va >= MAXVA)
+    return -1;
+  
+  char *mem = kalloc();
+  if (mem == 0)
+    panic("no more memory!");
+  memset(mem,0,PGSIZE);
+  
+  // 读取文件
+  for (i = 0;i < NVMA;++ i)
+      if (vma[i].addr <= va && va < vma[i].addr + vma[i].length)
+        break;
+  // if (va == 0xd000)
+  // {
+  //   printf("p1off:%d\n",vma[i].off);
+  // }
+  
+  if (va != vma[i].addr)
+    off = va - vma[i].addr + vma[i].off;
+  if (filereadoff(vma[i].f,(uint64)mem,off,PGSIZE) == -1)
+    return -1;
+  // vma[i].off += PGSIZE;
+
+  // printf("pacontent:%x\n",*mem);
+
+
+  flags =  vma[i].prot << 1;
+  // printf("flags:%x",flags);
+  // printf("va:%x\n",PGROUNDDOWN(va));
+  if (mappages(pagetable,PGROUNDDOWN(va),PGSIZE,(uint64)mem,flags | PTE_U) == -1){
+    kfree(mem);
+    printf("fail to map\n");
+    return -1;
+  } // allocate physical memory
+  // printf("pa:%p %p\n",walkaddr(pagetable,va),mem);
+  return 0;
+}
+
 //
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
@@ -67,10 +113,13 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
-  } else if(r_scause() == 0xd || r_scause() == 0xf){
-    if (pagefaulthandler(p->pagetable,r_stval()) < 0)
-      panic("pagefault handler error");
-  } else {
+  } 
+  else if(r_scause() == 0xd || r_scause() == 0xf){
+    // printf("sz:%x stval:%x\n",p->sz,r_stval());
+    if (pagefaulthandler(r_stval()) < 0)
+      p->killed = 1;
+  } 
+  else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;

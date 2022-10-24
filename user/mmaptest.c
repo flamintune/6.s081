@@ -60,16 +60,16 @@ void
 makefile(const char *f)
 {
   int i;
-  int n = PGSIZE/BSIZE;
+  int n = PGSIZE/BSIZE; // 4096 / 1024 = 4
 
   unlink(f);
   int fd = open(f, O_WRONLY | O_CREATE);
   if (fd == -1)
     err("open");
-  memset(buf, 'A', BSIZE);
+  memset(buf, 'A', BSIZE); // 1024
   // write 1.5 page
-  for (i = 0; i < n + n/2; i++) {
-    if (write(fd, buf, BSIZE) != BSIZE)
+  for (i = 0; i < n + n/2; i++) { // 6
+    if (write(fd, buf, BSIZE) != BSIZE) // 6 * 1024
       err("write 0 makefile");
   }
   if (close(fd) == -1)
@@ -114,6 +114,7 @@ mmap_test(void)
   if (p == MAP_FAILED)
     err("mmap (1)");
   _v1(p);
+  printf("_v1 passed\n");
   if (munmap(p, PGSIZE*2) == -1)
     err("munmap (1)");
 
@@ -123,6 +124,7 @@ mmap_test(void)
   // should be able to map file opened read-only with private writable
   // mapping
   p = mmap(0, PGSIZE*2, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+  // printf("%x\n",p);
   if (p == MAP_FAILED)
     err("mmap (2)");
   if (close(fd) == -1)
@@ -262,6 +264,7 @@ fork_test(void)
     err("open");
   unlink(f);
   char *p1 = mmap(0, PGSIZE*2, PROT_READ, MAP_SHARED, fd, 0);
+  // printf("%x\n",p1);
   if (p1 == MAP_FAILED)
     err("mmap (4)");
   char *p2 = mmap(0, PGSIZE*2, PROT_READ, MAP_SHARED, fd, 0);
@@ -275,7 +278,7 @@ fork_test(void)
   if((pid = fork()) < 0)
     err("fork");
   if (pid == 0) {
-    _v1(p1);
+    _v1(p1); // here error
     munmap(p1, PGSIZE); // just the first page
     exit(0); // tell the parent that the mapping looks OK.
   }

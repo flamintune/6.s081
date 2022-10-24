@@ -44,7 +44,7 @@ extern struct cpu cpus[NCPU];
 struct trapframe {
   /*   0 */ uint64 kernel_satp;   // kernel page table
   /*   8 */ uint64 kernel_sp;     // top of process's kernel stack
-  /*  16 */ uint64 kernel_trap;   // usertrap()
+  /*  16 */ uint64 kernel_trap;   // usertrap() 
   /*  24 */ uint64 epc;           // saved user program counter
   /*  32 */ uint64 kernel_hartid; // saved kernel tp
   /*  40 */ uint64 ra;
@@ -82,6 +82,15 @@ struct trapframe {
 
 enum procstate { UNUSED, USED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+struct vma{
+  uint64 addr; // 8
+  uint64 length; // 8
+  int    prot; // 4
+  int    flags; // 4
+  uint   off; // 4
+  struct file* f; // 8
+};
+
 // Per-process state
 struct proc {
   struct spinlock lock;
@@ -104,5 +113,7 @@ struct proc {
   struct context context;      // swtch() here to run process
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
-  char name[16];               // Process name (debugging)
+  char name[16];              // Process name (debugging)
+
+  struct vma vma[NVMA];
 };
