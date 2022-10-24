@@ -37,13 +37,13 @@ copyin(char *s)
       exit(1);
     }
     int n = write(fd, (void*)addr, 8192);
+    printf("ok");
     if(n >= 0){
       printf("write(fd, %p, 8192) returned %d, not -1\n", addr, n);
       exit(1);
     }
     close(fd);
     unlink("copyin1");
-    
     n = write(1, (char*)addr, 8192);
     if(n > 0){
       printf("write(1, %p, 8192) returned %d, not -1 or 0\n", addr, n);
