@@ -110,7 +110,7 @@ walkaddr(pagetable_t pagetable, uint64 va)
 
   pte = walk(pagetable, va, 0);
   if(pte == 0)
-    return -1; // maybeproblem
+    return 0; // maybeproblem yes big problem
   if((*pte & PTE_V) == 0)
     return 0;
   if((*pte & PTE_U) == 0)
@@ -361,7 +361,7 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
-    pa0 = walkaddr(pagetable, va0);
+    pa0 = walkaddr(pagetable, va0);    
     if(pa0 == 0)
       return -1;
     n = PGSIZE - (dstva - va0);
@@ -387,7 +387,9 @@ copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
   while(len > 0){
     va0 = PGROUNDDOWN(srcva);
     pa0 = walkaddr(pagetable, va0);
-    if(pa0 == 0)
+    
+    // printf("pa0:%p\n",pa0);
+    if(pa0 <= 0)
       return -1;
     n = PGSIZE - (srcva - va0);
     if(n > len)

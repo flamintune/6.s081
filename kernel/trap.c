@@ -39,16 +39,20 @@ pagefaulthandler(uint64 va)
 
   if (va >= MAXVA)
     return -1;
-  
+  for (i = 0;i < NVMA;++ i)
+    if (vma[i].addr <= va && va < vma[i].addr + vma[i].length)
+      break;
+  if (i == NVMA)
+    return -1;
   char *mem = kalloc();
   if (mem == 0)
     panic("no more memory!");
   memset(mem,0,PGSIZE);
   
   // 读取文件
-  for (i = 0;i < NVMA;++ i)
-      if (vma[i].addr <= va && va < vma[i].addr + vma[i].length)
-        break;
+  // for (i = 0;i < NVMA;++ i)
+  //     if (vma[i].addr <= va && va < vma[i].addr + vma[i].length)
+  //       break;
   // if (va == 0xd000)
   // {
   //   printf("p1off:%d\n",vma[i].off);
