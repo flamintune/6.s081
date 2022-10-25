@@ -281,7 +281,7 @@ main(int argc, char *argv[])
       exit(0);
     }
   }
-  printf("i:%d\n",i);
+  // printf("i:%d\n",i);
   for (i = 0; i < 10; i++){
     wait(&ret);
     if (ret != 0)

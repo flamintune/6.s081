@@ -150,7 +150,7 @@ e1000_recv(void)
     // printf("recv tail:%d head:%d \n",tail - 1,regs[E1000_RDH]);
     // check new packet is available
     if (rx_ring[tail].status  == 0){
-      printf("not ready rxd!\n");
+      // printf("not ready rxd!\n");
       return ;
     }
     // if (tail == head)
