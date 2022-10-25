@@ -13,17 +13,18 @@ static struct tx_desc tx_ring[TX_RING_SIZE] __attribute__((aligned(16)));
 static struct mbuf *tx_mbufs[TX_RING_SIZE];
 
 #define RX_RING_SIZE 16
-static struct rx_desc rx_ring[RX_RING_SIZE] __attribute__((aligned(16)));
-static struct mbuf *rx_mbufs[RX_RING_SIZE];
+static struct rx_desc rx_ring[RX_RING_SIZE] __attribute__((aligned(16))); // the descriptor format receive ring/queue
+static struct mbuf *rx_mbufs[RX_RING_SIZE]; // mbuf packet buffers for the e1000
 
 // remember where the e1000's registers live.
-static volatile uint32 *regs;
+static volatile uint32 *regs; // 保存了第一个控制寄存器
 
 struct spinlock e1000_lock;
 
 // called by pci_init().
 // xregs is the memory address at which the
-// e1000's registers are mapped.
+// e1000's registers are mapped. 
+// configure the E1000
 void
 e1000_init(uint32 *xregs)
 {
@@ -39,7 +40,7 @@ e1000_init(uint32 *xregs)
   regs[E1000_IMS] = 0; // redisable interrupts
   __sync_synchronize();
 
-  // [E1000 14.5] Transmit initialization
+  // [E1000 14.5] Transmit initialization transmit
   memset(tx_ring, 0, sizeof(tx_ring));
   for (i = 0; i < TX_RING_SIZE; i++) {
     tx_ring[i].status = E1000_TXD_STAT_DD;
@@ -51,10 +52,10 @@ e1000_init(uint32 *xregs)
   regs[E1000_TDLEN] = sizeof(tx_ring);
   regs[E1000_TDH] = regs[E1000_TDT] = 0;
   
-  // [E1000 14.4] Receive initialization
+  // [E1000 14.4] Receive initialization receive
   memset(rx_ring, 0, sizeof(rx_ring));
   for (i = 0; i < RX_RING_SIZE; i++) {
-    rx_mbufs[i] = mbufalloc(0);
+    rx_mbufs[i] = mbufalloc(0); // allocate mbuf
     if (!rx_mbufs[i])
       panic("e1000");
     rx_ring[i].addr = (uint64) rx_mbufs[i]->head;
@@ -102,7 +103,30 @@ e1000_transmit(struct mbuf *m)
   // the TX descriptor ring so that the e1000 sends it. Stash
   // a pointer so that it can be freed after sending.
   //
-  
+  // printf("transmit start!\n");
+  // ask for Tx ring index by reading he E1000_TDT control reg
+  // acquire(&e1000_txlock);
+  int tail = regs[E1000_TDT],head = regs[E1000_TDH];
+  // then check if the ring is overflowing
+  if (!regs[E1000_TDLEN] && tail == head){
+    printf("tx overflow!\n");
+    return -1;
+  }
+  // E10000_TXDSTAT_DD finished
+  if ((tx_ring[tail].status & E1000_TXD_STAT_DD) == 0){
+    printf("not finshed!\n");
+    return -1;
+  }
+  if (tx_mbufs[tail])
+    mbuffree(tx_mbufs[tail]);
+  // fill descrpitor
+  tx_ring[tail].addr = (uint64)m->head;
+  tx_ring[tail].length = (uint16)m->len;
+  tx_ring[tail].cmd = 0x01;
+  tx_mbufs[tail] = m;
+  // update ring position
+  regs[E1000_TDT] = (tail + 1) % TX_RING_SIZE;
+  // release(&e1000_txlock);
   return 0;
 }
 
@@ -114,7 +138,27 @@ e1000_recv(void)
   //
   // Check for packets that have arrived from the e1000
   // Create and deliver an mbuf for each packet (using net_rx()).
-  //
+  // ask for index and update it
+  // printf("receive start!\n");
+  int tail = (regs[E1000_RDT] + 1) % RX_RING_SIZE;
+  // check new packet is available
+  if ((rx_ring[tail].status & E1000_RXD_STAT_DD) == 0){
+    printf("not ready rxd!\n");
+    return ;
+  }
+  if ((regs[E1000_RDLEN] != 0) && tail == regs[E1000_RDH]){
+    printf("already full !\n");
+    return ; // 满了
+  }
+  // update len and deliver mbuf by calling net_rx
+  rx_mbufs[tail]->len = rx_ring[tail].length;
+  net_rx(rx_mbufs[tail]);
+  // allocate a new mbuf and set head and clear status to zero
+  rx_mbufs[tail] = mbufalloc(0);
+  rx_ring[tail].addr = (uint64)rx_mbufs[tail]->head; 
+  rx_ring[tail].status = 0;
+  // update rdt
+  regs[E1000_RDT] = tail % RX_RING_SIZE;
 }
 
 void
@@ -123,7 +167,8 @@ e1000_intr(void)
   // tell the e1000 we've seen this interrupt;
   // without this the e1000 won't raise any
   // further interrupts.
+  acquire(&e1000_lock);
   regs[E1000_ICR] = 0xffffffff;
-
   e1000_recv();
+  release(&e1000_lock);
 }

@@ -193,7 +193,7 @@ net_tx_ip(struct mbuf *m, uint8 proto, uint32 dip)
   iphdr->ip_len = htons(m->len);
   iphdr->ip_ttl = 100;
   iphdr->ip_sum = in_cksum((unsigned char *)iphdr, sizeof(*iphdr));
-
+  // 填充 ip 数据报
   // now on to the ethernet layer
   net_tx_eth(m, ETHTYPE_IP);
 }

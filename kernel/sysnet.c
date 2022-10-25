@@ -24,7 +24,7 @@ struct sock {
 };
 
 static struct spinlock lock;
-static struct sock *sockets;
+static struct sock *sockets; // sockets list
 
 void
 sockinit(void)
