@@ -116,7 +116,7 @@ sockread(struct sock *si, uint64 addr, int n)
 
   acquire(&si->lock);
   while (mbufq_empty(&si->rxq) && !pr->killed) {
-    sleep(&si->rxq, &si->lock);
+    sleep(&si->rxq, &si->lock); // block here
   }
   if (pr->killed) {
     release(&si->lock);

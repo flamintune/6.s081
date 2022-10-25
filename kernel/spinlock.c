@@ -75,7 +75,7 @@ acquire(struct spinlock *lk)
   //   amoswap.w.aq a5, a5, (s1)
   while(__sync_lock_test_and_set(&lk->locked, 1) != 0) {
 #ifdef LAB_LOCK
-    __sync_fetch_and_add(&(lk->nts), 1);
+    __sync_fetch_and_add(&x(lk->nts), 1);
 #else
    ;
 #endif

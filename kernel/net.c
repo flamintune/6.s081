@@ -182,6 +182,7 @@ static void
 net_tx_ip(struct mbuf *m, uint8 proto, uint32 dip)
 {
   struct ip *iphdr;
+  
 
   // push the IP header
   iphdr = mbufpushhdr(m, *iphdr);
@@ -276,6 +277,7 @@ net_rx_arp(struct mbuf *m)
   memmove(smac, arphdr->sha, ETHADDR_LEN); // sender's ethernet address
   sip = ntohl(arphdr->sip); // sender's IP address (qemu's slirp)
   net_tx_arp(ARP_OP_REPLY, smac, sip);
+  // printf("%p",m);
 
 done:
   mbuffree(m);
@@ -357,13 +359,13 @@ void net_rx(struct mbuf *m)
 {
   struct eth *ethhdr;
   uint16 type;
+  
 
   ethhdr = mbufpullhdr(m, *ethhdr);
   if (!ethhdr) {
     mbuffree(m);
     return;
   }
-
   type = ntohs(ethhdr->type);
   if (type == ETHTYPE_IP)
     net_rx_ip(m);

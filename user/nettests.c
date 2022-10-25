@@ -45,7 +45,6 @@ ping(uint16 sport, uint16 dport, int attempts)
     fprintf(2, "ping didn't receive correct payload\n");
     exit(1);
   }
-
 }
 
 // Encode a DNS name
@@ -262,7 +261,7 @@ main(int argc, char *argv[])
   int i, ret;
   uint16 dport = NET_TESTS_PORT;
 
-  printf("nettests running on port %d\n", dport);
+  // printf("nettests running on port %d\n", dport);
   
   printf("testing ping: ");
   ping(2000, dport, 1);
@@ -278,9 +277,11 @@ main(int argc, char *argv[])
     int pid = fork();
     if (pid == 0){
       ping(2000 + i + 1, dport, 1);
+      // printf("i:%d\n",i);
       exit(0);
     }
   }
+  printf("i:%d\n",i);
   for (i = 0; i < 10; i++){
     wait(&ret);
     if (ret != 0)
