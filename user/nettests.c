@@ -264,6 +264,7 @@ main(int argc, char *argv[])
   printf("nettests running on port %d\n", dport);
   
   printf("testing ping: ");
+  
   ping(2000, dport, 1);
   printf("OK\n");
   
@@ -295,4 +296,5 @@ main(int argc, char *argv[])
   
   printf("all tests passed.\n");
   exit(0);
+// X-Your-Code-Is: 245235
 }
