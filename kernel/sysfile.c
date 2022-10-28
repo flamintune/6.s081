@@ -499,6 +499,7 @@ sys_mmap(void)
     
   if (checkreadwrite(flags,prot,f) < 0)
     return -1;
+  
   if (addr == 0)
   {
     addr = myproc()->sz;
@@ -534,6 +535,7 @@ sys_munmap(void)
   {
     if (myproc()->vma[i].addr == addr){
       if (myproc()->vma[i].addr == length){
+
         filedecre(myproc()->vma[i].f);
         myproc()->vma[i].addr = 0;
       }
