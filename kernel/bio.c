@@ -82,8 +82,8 @@ bget(uint dev, uint blockno)
   for (b = bcache.table[i].next;b != &bcache.table[i];b = b->next){ 
     if (b->dev == dev && b->blockno == blockno){
       b->refcnt++;
-      release(&bcache.bucket[i]);
       acquiresleep(&b->lock);
+      release(&bcache.bucket[i]);
       return b;
     }
     last = b;
