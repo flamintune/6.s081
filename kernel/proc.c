@@ -285,7 +285,7 @@ fork(void)
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
     freeproc(np);
     release(&np->lock);
-    return -1;
+  return -1;
   }
   np->sz = p->sz;
 
