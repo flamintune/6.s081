@@ -479,6 +479,8 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 int
 pagefaulthandler(pagetable_t pagetable,uint64 va)
 {
+  printf("%p\n")
+  myproc();
   if (va >= MAXVA)
     return 1;
   pte_t* pte = walk(pagetable,va,0);
