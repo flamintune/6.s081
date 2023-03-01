@@ -1,47 +1,72 @@
-xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix
-Version 6 (v6).  xv6 loosely follows the structure and style of v6,
-but is implemented for a modern RISC-V multiprocessor using ANSI C.
+# Lab4 traps
 
-ACKNOWLEDGMENTS
+lab4主要与trap机制有关，在xv6中系统调用是通过trap来实现的，
 
-xv6 is inspired by John Lions's Commentary on UNIX 6th Edition (Peer
-to Peer Communications; ISBN: 1-57398-013-7; 1st edition (June 14,
-2000)). See also https://pdos.csail.mit.edu/6.828/, which
-provides pointers to on-line resources for v6.
+* Backtrace `kernel/printf.c` 打印当前栈中函数的调用情况，跟gdb中backtrace类似，下面是实现思路
 
-The following people have made contributions: Russ Cox (context switching,
-locking), Cliff Frey (MP), Xiao Yu (MP), Nickolai Zeldovich, and Austin
-Clements.
+    1.C语言的语义——stackframe C程序是由一个个栈帧组成，一个栈帧里面保存了函数的参数，返回地址等等。当有多个函数调用的时候，实际上就是在栈上面保存了同等数量的栈帧，只要我们能找到返回地址，就能用frame pointer来找到每个栈帧的位置，以及所调用函数的名字。当fp 快接近 栈指针sp 的时候，说明当前是第一个栈帧，不用再继续往下找栈帧。下面是具体代码
+    ```c
+    void backtrace()
+    {
+        uint64 fp = r_fp();
+        uint64 sp = PGROUNDDOWN(fp);
+        printf("backtrace:\n");
+        
+        while (1)
+        {
+            uint64 ra =  *(uint64*)(fp - 8);
+            fp = *(uint64*)(fp - 16);
+            printf("%p\n",ra);
 
-We are also grateful for the bug reports and patches contributed by
-Takahiro Aoyagi, Silas Boyd-Wickizer, Anton Burtsev, Ian Chen, Dan
-Cross, Cody Cutler, Mike CAT, Tej Chajed, Asami Doi, eyalz800, Nelson
-Elhage, Saar Ettinger, Alice Ferrazzi, Nathaniel Filardo, flespark,
-Peter Froehlich, Yakir Goaron,Shivam Handa, Matt Harvey, Bryan Henry,
-jaichenhengjie, Jim Huang, Matúš Jókay, Alexander Kapshuk, Anders
-Kaseorg, kehao95, Wolfgang Keller, Jungwoo Kim, Jonathan Kimmitt,
-Eddie Kohler, Vadim Kolontsov , Austin Liew, l0stman, Pavan
-Maddamsetti, Imbar Marinescu, Yandong Mao, , Matan Shabtay, Hitoshi
-Mitake, Carmi Merimovich, Mark Morrissey, mtasm, Joel Nider,
-OptimisticSide, Greg Price, Jude Rich, Ayan Shafqat, Eldar Sehayek,
-Yongming Shen, Fumiya Shigemitsu, Cam Tenny, tyfkda, Warren Toomey,
-Stephen Tu, Rafael Ubal, Amane Uehara, Pablo Ventura, Xi Wang, Keiichi
-Watanabe, Nicolas Wolovick, wxdao, Grant Wu, Jindong Zhang, Icenowy
-Zheng, ZhUyU1997, and Zou Chang Wei.
+            if (PGROUNDDOWN(fp) != sp)
+            break;
+        }
+    }
+    ```
 
-The code in the files that constitute xv6 is
-Copyright 2006-2020 Frans Kaashoek, Robert Morris, and Russ Cox.
+* Alarm `kernel/sysproc.c kernel/trap.c` 实现alarm(n,fn)让os每隔n个tick就调用函数fn，下面是实现思路
 
-ERROR REPORTS
+    1.两个系统调用sigalarm和sigreturn，sigalarm负责设置tick和handler，sigreturn负责重启用户程序
+    
+    2.在设置好tick和handler之后，我们将其保存在进程的数据结构中。在trap中来判断tick是否超时了，xv6中所有的用户态到内核态的转换都是在`trap.c`中完成，找到时间中断的条件，在里面补上tick的判断。
+    
+    当tick到达之后，把当前的pc指向handler，这样程序就会执行handler了，并且在handler中调用sigreturn保证能够恢复程序
 
-Please send errors and suggestions to Frans Kaashoek and Robert Morris
-(kaashoek,rtm@mit.edu). The main purpose of xv6 is as a teaching
-operating system for MIT's 6.S081, so we are more interested in
-simplifications and clarifications than new features.
+    3.sigreturn主要负责恢复进程的上下文，以及跳转到原先的pc的位置。
+    
+    在本次lab中进程的上下文是保存在进程当中的，因此在sigreturn的时候需要及时释放掉该部分内存，避免造成内存泄漏
+    
+    相关代码如下：
+    ```c
+    uint64
+    sys_sigalarm(void)
+    {
+        if (argint(0,&myproc()->tick) < 0)
+            return -1;
+        if (argaddr(1,&myproc()->handler) < 0)
+            return -1;
+        return 0;
+    }
+    uint64
+    sys_sigreturn(void)
+    {
+        myproc()->returned = 1;
+        memmove(myproc()->trapframe,(char *)myproc()->alarmframe,sizeof(struct trapframe));
+        kfree((void*)myproc()->alarmframe);
+        return 0;
+    }
 
-BUILDING AND RUNNING XV6
-
-You will need a RISC-V "newlib" tool chain from
-https://github.com/riscv/riscv-gnu-toolchain, and qemu compiled for
-riscv64-softmmu. Once they are installed, and in your shell
-search path, you can run "make qemu".
+    // trap.c中对于tick的处理
+        p->timer++;
+    if (p->tick == p->timer)
+    {
+      p->timer = 0;
+      if ((p->handler || p->tick) && p->returned)
+      {
+        p->alarmframe = (struct trapframe*)kalloc();
+        memmove(p->alarmframe,(char *)p->trapframe,sizeof(struct trapframe));
+        p->returned = 0;
+        p->trapframe->epc = p->handler; // 跳转了
+      }
+    }
+    ```

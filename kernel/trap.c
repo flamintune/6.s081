@@ -89,7 +89,7 @@ usertrap(void)
         p->alarmframe = (struct trapframe*)kalloc();
         memmove(p->alarmframe,(char *)p->trapframe,sizeof(struct trapframe));
         p->returned = 0;
-        p->trapframe->epc = p->handler;
+        p->trapframe->epc = p->handler; // 跳转了
       }
     }
     yield();
