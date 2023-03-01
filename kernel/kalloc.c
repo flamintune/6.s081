@@ -82,14 +82,14 @@ kalloc(void)
   r = kmem[cid].freelist;
   if(r)
     kmem[cid].freelist = r->next;
-  else
+  else //! no page need to steal mem
   {
     for (int i = 0;i < NCPU && !r;++ i)
     {
       if (i != cid)
       {
         acquire(&kmem[i].lock);
-        if (kmem[i].freelist)
+        if (kmem[i].freelist) //! 可以一次偷好几个，偷太多太少都会导致再次发生偷
         {
           r = kmem[i].freelist;
           kmem[i].freelist = r->next;
