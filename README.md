@@ -1,5 +1,5 @@
 # lab8 file system
-
+ 
 lab8主要与文件系统相关，主要需要实现两个特性，大文件的支持以及软链接的实现
 
 * 大文件的支持 `kernel/file.h kernel/fs.c` xv6中文件是通过12个inode直接映射block，1个inode间接映射block实现的，所以文件最大只能支持 12 + 1*(block/blocksize=1024/4) = 268个block
