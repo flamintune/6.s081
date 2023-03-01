@@ -512,3 +512,27 @@ sys_connect(void)
   return fd;
 }
 #endif
+
+uint64
+sys_symlink(void)
+{
+  char path[MAXPATH], target[MAXPATH];
+  struct inode *ip;
+  uint off = 0;
+  if(argstr(0, target, MAXPATH) < 0 || argstr(1, path, MAXPATH) < 0)
+    return -1;
+
+  begin_op();
+  
+  if ((ip = create(path,T_SYMLINK,0,0)) == 0){ // 创建一个 inode 且添加到父目录里面
+    end_op();
+    return -1;
+  }
+  if (writei(ip,0,(uint64)target,off,MAXPATH) != MAXPATH)
+    panic("unlink:write");
+  
+  iupdate(ip);
+  iunlockput(ip);
+  end_op();
+  return 0;
+}

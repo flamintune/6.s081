@@ -33,7 +33,7 @@ struct inode {
   short minor;
   short nlink;
   uint size;
-  uint addrs[NDIRECT+1];
+  uint addrs[NDIRECT+2]; //! here 添加一个间接block
 };
 
 // map major device number to device functions.
