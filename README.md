@@ -1,14 +1,12 @@
-6.s081(xv6)
-===============
+# 6.s081(xv6)
 xv6是MIT6.s081这门操作系统课所用到的基于riscv架构的教学操作系统。这门课，主要布置了以下10个lab，这些lab基本上都是围绕xv6来修改相关代码，以及增加相关特性
 
-写在前面
+## 写在前面
 ----
 项目是以一个git分支来完成一个lab的，所以不同的lab分布在不同的分支中。
 
-目录
------
-labx: <labname> <branchname>
+## 目录
+labx: \<labname\> \<branchname\>
 - lab1: Utilities   util
 
     lab1主要是利用系统调用实现一些小命令，有sleep、find、primes、xargs。
